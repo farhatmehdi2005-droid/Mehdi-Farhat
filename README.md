@@ -6,7 +6,7 @@ Workflow n8n de suivi quotidien et hebdomadaire des cours, accompagné de deux s
 
 Le workflow récupère les cours de Schneider Electric, Air Liquide, Dassault Systèmes et de l’ETF IUSD sur Yahoo Finance. Il conserve les observations valides dans une table n8n, prépare un bilan quotidien et un récapitulatif hebdomadaire, puis demande une synthèse à Gemini et envoie les messages par Gmail.
 
-![Aperçu du workflow de suivi boursier dans n8n](media/workflow-preview.png)
+![Aperçu du workflow de suivi boursier dans n8n](media/Workflow.png)
 
 Le parcours quotidien est planifié du lundi au vendredi à 18 h 15 (heure de Paris). Le récapitulatif hebdomadaire est planifié le vendredi à 18 h 45.
 
