@@ -11,7 +11,7 @@ Valeurs suivies : Schneider Electric (`SU.PA`), Air Liquide (`AI.PA`), Dassault 
 
 Le bilan hebdomadaire dépend de l’historique enregistré par les exécutions quotidiennes. S’il y a moins de deux cours dans la semaine pour une valeur, le courriel indique que l’historique est insuffisant.
 
-![Aperçu du workflow de suivi boursier dans n8n](media/workflow.png)
+![Aperçu du workflow de suivi boursier dans n8n](media/Workflow.png)
 
 ## Fichiers
 
