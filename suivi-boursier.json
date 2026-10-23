@@ -1,0 +1,1078 @@
+{
+  "name": "suivi boursier projet_n8N Mehdi Farhat",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "15 18 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "f9580b9e-3545-4b00-b9b9-1fb93708b8dd",
+      "name": "Après clôture (Europe/Paris)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        768
+      ],
+      "notesInFlow": true,
+      "notes": "Déclenche le suivi quotidien après la clôture de la Bourse, du lundi au vendredi."
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "Historique_Bourse_v1",
+        "columns": {
+          "column": [
+            {
+              "name": "symbol"
+            },
+            {
+              "name": "name"
+            },
+            {
+              "name": "market_date"
+            },
+            {
+              "name": "checked_at"
+            },
+            {
+              "name": "price",
+              "type": "number"
+            },
+            {
+              "name": "currency"
+            },
+            {
+              "name": "change_pct",
+              "type": "number"
+            },
+            {
+              "name": "data_status"
+            },
+            {
+              "name": "is_fresh",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {
+          "createIfNotExists": true
+        }
+      },
+      "id": "91e3170a-6cc1-46ac-aa82-849217726479",
+      "name": "Créer ou réutiliser l’historique",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        352,
+        768
+      ],
+      "notesInFlow": true,
+      "notes": "Prépare la table de données qui conserve les cours observés."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "symbols",
+              "name": "symbols",
+              "value": "={{ [\"SU.PA\", \"AI.PA\", \"DSY.PA\", \"IUSD.DE\"] }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "76ebfcce-9a03-45c6-8851-8247d37b2ba5",
+      "name": "Liste des symboles",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        608,
+        768
+      ],
+      "notesInFlow": true,
+      "notes": "Définit les actions à suivre et leurs symboles Yahoo Finance."
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "symbols",
+        "options": {
+          "destinationFieldName": "symbol"
+        }
+      },
+      "id": "27ba770b-209d-4080-9fb0-142f5a7d675d",
+      "name": "Une action par item",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        848,
+        768
+      ],
+      "notesInFlow": true,
+      "notes": "Transforme la liste des symboles en éléments traités séparément."
+    },
+    {
+      "parameters": {
+        "url": "=https://query1.finance.yahoo.com/v8/finance/chart/{{ $json.symbol }}?interval=1d&range=1mo",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "8ed0cd97-5def-4de6-9f13-e79ee8f8ed8f",
+      "name": "Récupérer le cours",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1056,
+        768
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notesInFlow": true,
+      "onError": "continueRegularOutput",
+      "notes": "Demande à Yahoo Finance le cours récent de chaque action."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b6890588-3391-44c2-b59f-6c25f02547d1",
+              "name": "symbol",
+              "value": "={{ $('Une action par item').item.json.symbol }}",
+              "type": "string"
+            },
+            {
+              "id": "ffdddc1a-60b7-4e90-8081-40f578310f22",
+              "name": "name",
+              "value": "={{ String(($json.chart?.result?.[0]?.meta?.shortName||$json.chart?.result?.[0]?.meta?.longName||$('Une action par item').item.json.symbol)) }}",
+              "type": "string"
+            },
+            {
+              "id": "03986d9e-adf8-45b4-ab08-51dc2ce74a39",
+              "name": "market_date",
+              "value": "={{ DateTime.fromSeconds(Number((($json.chart?.result?.[0]?.timestamp||[]))[($json.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).map((v,i)=>v!==null&&v!==undefined&&Number.isFinite(Number(v))?i:-1).filter(i=>i>=0).at(-1)]),{zone:'Europe/Paris'}).toFormat('yyyy-MM-dd') }}",
+              "type": "string"
+            },
+            {
+              "id": "ad8c0a16-8e55-4db4-a467-141cdb9538de",
+              "name": "checked_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "91c4305a-c3f3-41ea-98c7-5469250b1021",
+              "name": "price",
+              "value": "={{ Number((($json.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]))[($json.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).map((v,i)=>v!==null&&v!==undefined&&Number.isFinite(Number(v))?i:-1).filter(i=>i>=0).at(-1)]) }}",
+              "type": "number"
+            },
+            {
+              "id": "17d54785-dd8a-47ef-96fb-0162573c5a19",
+              "name": "currency",
+              "value": "={{ String($json.chart?.result?.[0]?.meta?.currency||'') }}",
+              "type": "string"
+            },
+            {
+              "id": "063fbc5e-45fd-4cac-acea-355f4340c66b",
+              "name": "change_pct",
+              "value": "={{ ((Number((($json.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]))[($json.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).map((v,i)=>v!==null&&v!==undefined&&Number.isFinite(Number(v))?i:-1).filter(i=>i>=0).at(-1)])-Number((($json.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]))[($json.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).map((v,i)=>v!==null&&v!==undefined&&Number.isFinite(Number(v))?i:-1).filter(i=>i>=0).at(-2)]??$json.chart?.result?.[0]?.meta?.chartPreviousClose))/Number((($json.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]))[($json.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).map((v,i)=>v!==null&&v!==undefined&&Number.isFinite(Number(v))?i:-1).filter(i=>i>=0).at(-2)]??$json.chart?.result?.[0]?.meta?.chartPreviousClose))*100 }}",
+              "type": "number"
+            },
+            {
+              "id": "7a459cfc-ad26-46fb-b6e6-118c1bc158d0",
+              "name": "data_status",
+              "value": "={{ (DateTime.fromSeconds(Number((($json.chart?.result?.[0]?.timestamp||[]))[($json.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).map((v,i)=>v!==null&&v!==undefined&&Number.isFinite(Number(v))?i:-1).filter(i=>i>=0).at(-1)]),{zone:'Europe/Paris'}).toFormat('yyyy-MM-dd')===$now.setZone('Europe/Paris').toFormat('yyyy-MM-dd'))?'fresh':'stale' }}",
+              "type": "string"
+            },
+            {
+              "id": "06294538-484f-4b03-aaaf-f29946662a39",
+              "name": "is_fresh",
+              "value": "={{ DateTime.fromSeconds(Number((($json.chart?.result?.[0]?.timestamp||[]))[($json.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).map((v,i)=>v!==null&&v!==undefined&&Number.isFinite(Number(v))?i:-1).filter(i=>i>=0).at(-1)]),{zone:'Europe/Paris'}).toFormat('yyyy-MM-dd')===$now.setZone('Europe/Paris').toFormat('yyyy-MM-dd') }}",
+              "type": "boolean"
+            },
+            {
+              "id": "a40fd595-c108-46de-83d8-78f8fe53caeb",
+              "name": "history",
+              "value": "={{ (($json.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[])).map((v,i)=>({v,i})).filter(x=>x.v!==null&&x.v!==undefined&&Number.isFinite(Number(x.v))).slice(-20).map(x=>({date:DateTime.fromSeconds(Number((($json.chart?.result?.[0]?.timestamp||[]))[x.i]),{zone:'Europe/Paris'}).toFormat('yyyy-MM-dd'),close:Number(x.v)})) }}",
+              "type": "array"
+            },
+            {
+              "id": "0bab6656-1209-425d-a43b-96208e0afc2a",
+              "name": "valid",
+              "value": "={{ !!$json.chart?.result?.[0]?.meta&&!$json.chart?.error&&($json.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).map((v,i)=>v!==null&&v!==undefined&&Number.isFinite(Number(v))?i:-1).filter(i=>i>=0).at(-1)>=0&&Number.isFinite(Number((($json.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]))[($json.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).map((v,i)=>v!==null&&v!==undefined&&Number.isFinite(Number(v))?i:-1).filter(i=>i>=0).at(-1)]))&&Number((($json.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]))[($json.chart?.result?.[0]?.indicators?.quote?.[0]?.close||[]).map((v,i)=>v!==null&&v!==undefined&&Number.isFinite(Number(v))?i:-1).filter(i=>i>=0).at(-2)]??$json.chart?.result?.[0]?.meta?.chartPreviousClose)>0 }}",
+              "type": "boolean"
+            },
+            {
+              "id": "2398e21f-e9b0-4635-a621-106a85f098c6",
+              "name": "error",
+              "value": "={{ $json.chart?.error?.description||'' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "dc2ef4ca-5542-4ce2-9d2e-6a733ebbd6a2",
+      "name": "Mettre en forme le cours (sans Code)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1248,
+        768
+      ],
+      "notesInFlow": true,
+      "notes": "Nettoie les réponses, vérifie les cours et prépare les données utiles à l’historique et au bilan."
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "quotes",
+        "options": {}
+      },
+      "id": "16aa8847-ac2a-4305-b0c7-9f02130bb279",
+      "name": "Regrouper les résultats",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1472,
+        560
+      ],
+      "notesInFlow": true,
+      "notes": "Rassemble les cours du jour en un seul ensemble."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "60219ac4-c8b0-41fe-824f-de7c2b0f0fb8",
+              "name": "email_subject",
+              "value": "={{ (()=>{const x=(()=>{const rows=$json.quotes||[],syms=['SU.PA','AI.PA','DSY.PA','IUSD.DE'],by=Object.fromEntries(rows.map(r=>[r.symbol,r])),missing=syms.filter(s=>!by[s]||by[s].data_status==='error'),stale=rows.filter(r=>r.data_status==='stale'),alerts=rows.filter(r=>r.data_status==='fresh'&&Number(r.change_pct)<=-2),d=new Date().toLocaleString('fr-FR',{timeZone:'Europe/Paris',dateStyle:'short',timeStyle:'short'});const lines=syms.map(s=>{const r=by[s];if(!r||r.data_status==='error')return `• ${s} : données indisponibles`;return `• ${r.name} (${s}) : ${Number(r.price).toFixed(2)} ${r.currency} | ${Number(r.change_pct)>=0?'+':''}${Number(r.change_pct).toFixed(3)} % | ${r.data_status==='stale'?'cours ancien du '+r.market_date:'cours du '+r.market_date}`});return {rows,syms,by,missing,stale,alerts,d,lines} })();return `${x.alerts.length?'🚨 ALERTE':(x.missing.length||x.stale.length?'⚠️ Bilan incomplet':'📊 Bilan bourse')} — ${x.d}`})() }}",
+              "type": "string"
+            },
+            {
+              "id": "13f74949-55ba-4b35-a376-4ae0c2fa02ef",
+              "name": "base_body",
+              "value": "={{ (()=>{const x=(()=>{const rows=$json.quotes||[],syms=['SU.PA','AI.PA','DSY.PA','IUSD.DE'],by=Object.fromEntries(rows.map(r=>[r.symbol,r])),missing=syms.filter(s=>!by[s]||by[s].data_status==='error'),stale=rows.filter(r=>r.data_status==='stale'),alerts=rows.filter(r=>r.data_status==='fresh'&&Number(r.change_pct)<=-2),d=new Date().toLocaleString('fr-FR',{timeZone:'Europe/Paris',dateStyle:'short',timeStyle:'short'});const lines=syms.map(s=>{const r=by[s];if(!r||r.data_status==='error')return `• ${s} : données indisponibles`;return `• ${r.name} (${s}) : ${Number(r.price).toFixed(2)} ${r.currency} | ${Number(r.change_pct)>=0?'+':''}${Number(r.change_pct).toFixed(3)} % | ${r.data_status==='stale'?'cours ancien du '+r.market_date:'cours du '+r.market_date}`});return {rows,syms,by,missing,stale,alerts,d,lines} })();return [`Suivi quotidien des cours — ${x.d} (heure de Paris)`,'',...x.lines,'',x.alerts.length?`ALERTE : baisse fraîche d’au moins 2 % pour ${x.alerts.map(r=>r.symbol).join(', ')}.`:'Aucune baisse fraîche de 2 % ou plus détectée.',...(x.missing.length?[`Données manquantes : ${x.missing.join(', ')}.`]:[]),...(x.stale.length?[`Cours non actualisés aujourd’hui : ${x.stale.map(r=>r.symbol).join(', ')}.`]:[]),'','Source des cours : Yahoo Finance.'].join('\\n')})() }}",
+              "type": "string"
+            },
+            {
+              "id": "c8f411e7-8146-4397-b2d1-0fe306e91672",
+              "name": "prompt",
+              "value": "=<mission>\nAnalyse le suivi boursier fourni et rédige un résumé court en français.\nAide le lecteur à repérer les changements notables et les éléments à surveiller.\n</mission>\n\n<regles>\n- Utilise les cours et l’historique fournis pour les chiffres.\n- Distingue clairement les faits observés, les informations trouvées en ligne et tes interprétations.\n- Ne présente jamais une actualité comme la cause certaine d’une variation sans preuve.\n- Si une donnée est absente ou ancienne, signale-le et ne tire pas de conclusion sur le cours actuel.\n- N’invente aucun chiffre, événement, source ou URL.\n- Ne donne aucun conseil personnalisé ni recommandation d’achat ou de vente.\n- Si rien ne ressort clairement, dis-le simplement au lieu de remplir le résumé.\n</regles>\n\n<critere_de_changement_notable>\nCompare la variation à l’historique fourni quand il est disponible.\nNe crée pas de seuil arbitraire. Si les données ne suffisent pas à dire qu’un mouvement est inhabituel, présente-le comme une simple variation observée.\n</critere_de_changement_notable>\n\n<format>\nFais 3 à 5 puces maximum.\nPour chaque élément notable, indique le fait, pourquoi il mérite attention et ce qui reste incertain.\nTermine par une courte section « À surveiller ».\nAjoute les sources web réellement utilisées, si la recherche en fournit.\n</format>\n\n<exemples>\n<exemple>\n<donnees>\nUne action varie de +1,2 %. Son historique récent montre des variations quotidiennes généralement proches de 0,2 %.\n</donnees>\n<reponse_attendue>\nLa hausse de 1,2 % est plus marquée que les mouvements récents fournis. À surveiller : voir si cette évolution se confirme lors des prochaines séances. Aucune cause n’est établie par ces seules données.\n</reponse_attendue>\n</exemple>\n\n<exemple>\n<donnees>\nLe dernier cours disponible date d’hier et le statut indique « stale ».\n</donnees>\n<reponse_attendue>\nLe cours n’a pas été actualisé aujourd’hui. Je ne peux donc pas confirmer la variation du jour ; attendre une nouvelle donnée avant de conclure.\n</reponse_attendue>\n</exemple>\n\n<exemple>\n<donnees>\nLes cours sont disponibles, mais aucun mouvement ne se distingue de l’historique fourni et aucune actualité pertinente n’a été trouvée.\n</donnees>\n<reponse_attendue>\nRien de particulièrement notable aujourd’hui. À surveiller : la prochaine mise à jour des cours.\n</reponse_attendue>\n</exemple>\n</exemples>\n\n<donnees>\n[Insérer ici les données JSON calculées par le workflow]\n</donnees>",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e3dc7bd2-4a03-42c6-b755-a3b2073e9b89",
+      "name": "Préparer les données quotidiennes (sans Code)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1744,
+        352
+      ],
+      "notesInFlow": true,
+      "notes": "Construit le sujet, le texte du bilan quotidien et les consignes envoyées à Gemini."
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-flash-lite-latest",
+          "mode": "id"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.prompt }}"
+            }
+          ]
+        },
+        "simplify": false,
+        "builtInTools": {
+          "googleSearch": true
+        },
+        "options": {
+          "maxOutputTokens": 1500
+        }
+      },
+      "id": "d11edceb-3ada-4b2f-bf2c-34ea7195b19a",
+      "name": "Analyse IA quotidienne — Gemini natif",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1472,
+        32
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "notesInFlow": true,
+      "onError": "continueRegularOutput",
+      "notes": "Demande à Gemini une analyse en français des cours et des actualités disponibles."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "974037f5-8ea0-4a14-be50-1cfba5707e53",
+              "name": "email_subject",
+              "value": "={{ $('Préparer les données quotidiennes (sans Code)').item.json.email_subject }}",
+              "type": "string"
+            },
+            {
+              "id": "27b9b047-79f9-41ed-a645-705988cf7f39",
+              "name": "email_body",
+              "value": "={{ (()=>{const t=String($json.text||$json.output_text||($json.content?.parts||[]).filter(p=>typeof p.text==='string').map(p=>p.text).join('\\n')||($json.candidates||$json.response?.candidates||[]).flatMap(c=>c.content?.parts||[]).filter(p=>typeof p.text==='string').map(p=>p.text).join('\\n')||($json.steps||[]).filter(s=>s.type==='model_output').flatMap(s=>s.content||[]).filter(c=>c.type==='text').map(c=>c.text||'').join('\\n')||'').trim(),u=[...new Set([...(Array.isArray($json.candidates)?$json.candidates:($json.response?.candidates||[])).flatMap(c=>c.groundingMetadata?.groundingChunks||[]).map(c=>c.web?.uri||c.web?.url||'').filter(u=>/^https?:\\/\\//i.test(u)),...($json.steps||[]).filter(s=>s.type==='model_output').flatMap(s=>s.content||[]).filter(c=>c.type==='text').flatMap(c=>c.annotations||[]).filter(a=>a.type==='url_citation'&&/^https?:\\/\\//i.test(a.url||'')).map(a=>a.url)] )];return `${$('Préparer les données quotidiennes (sans Code)').item.json.base_body}\\n\\nAnalyse IA (à titre informatif)\\n${t||'Analyse IA indisponible (Gemini ou recherche web sans réponse). Les chiffres ci-dessus restent disponibles.'}${u.length?'\\n\\nSources web citées par Gemini\\n'+u.join('\\n'):'\\n\\nAucune source web exploitable n’a été renvoyée.'}\\n\\nCette analyse peut contenir des erreurs; elle ne constitue pas un conseil financier.`})() }}",
+              "type": "string"
+            },
+            {
+              "id": "a361efbe-3c26-49dc-8eed-99a3e8970991",
+              "name": "analysis_available",
+              "value": "={{ !!(String($json.text||$json.output_text||($json.content?.parts||[]).filter(p=>typeof p.text==='string').map(p=>p.text).join('\\n')||($json.candidates||$json.response?.candidates||[]).flatMap(c=>c.content?.parts||[]).filter(p=>typeof p.text==='string').map(p=>p.text).join('\\n')||($json.steps||[]).filter(s=>s.type==='model_output').flatMap(s=>s.content||[]).filter(c=>c.type==='text').map(c=>c.text||'').join('\\n')||'').trim()) }}",
+              "type": "boolean"
+            },
+            {
+              "id": "32047deb-96fd-4d92-884f-2946a2378e76",
+              "name": "citation_count",
+              "value": "={{ [...new Set([...(Array.isArray($json.candidates)?$json.candidates:($json.response?.candidates||[])).flatMap(c=>c.groundingMetadata?.groundingChunks||[]).map(c=>c.web?.uri||c.web?.url||'').filter(u=>/^https?:\\/\\//i.test(u)),...($json.steps||[]).filter(s=>s.type==='model_output').flatMap(s=>s.content||[]).filter(c=>c.type==='text').flatMap(c=>c.annotations||[]).filter(a=>a.type==='url_citation'&&/^https?:\\/\\//i.test(a.url||'')).map(a=>a.url)] )].length }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "72fa5de8-4526-49ea-857d-cee1290a7827",
+      "name": "Assembler le mail quotidien (sans Code)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1856,
+        0
+      ],
+      "notesInFlow": true,
+      "notes": "Réunit les cours, l’analyse IA et les éventuelles sources pour composer le courriel."
+    },
+    {
+      "parameters": {
+        "sendTo": "EMAIL_A_REMPLACER",
+        "subject": "={{ $json.email_subject }}",
+        "message": "={{ $json.email_body }}",
+        "options": {}
+      },
+      "id": "6d58f5df-f397-4477-95e9-3756d0a51b3a",
+      "name": "Envoyer le bilan quotidien avec analyse IA",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2000,
+        160
+      ],
+      "webhookId": "cc9213f3-4b07-437d-8542-d5cf00bd04b8",
+      "notesInFlow": true,
+      "notes": "Envoie par Gmail le bilan quotidien préparé."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "is-valid",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a4263d19-5771-4148-8846-d511c9bdde3f",
+      "name": "Cours valides pour historique",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        768
+      ],
+      "notesInFlow": true,
+      "notes": "Ne laisse passer vers l’historique que les cours marqués comme valides."
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Historique_Bourse_v1"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "=symbol",
+              "condition": "=eq",
+              "keyValue": "={{ $json.symbol }}"
+            },
+            {
+              "keyName": "=market_date",
+              "condition": "=eq",
+              "keyValue": "={{ $json.market_date }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "symbol": "={{ $json.symbol }}",
+            "name": "={{ $json.name }}",
+            "market_date": "={{ $json.market_date }}",
+            "checked_at": "={{ $json.checked_at }}",
+            "price": "={{ $json.price }}",
+            "currency": "={{ $json.currency }}",
+            "change_pct": "={{ $json.change_pct }}",
+            "data_status": "={{ $json.data_status }}",
+            "is_fresh": "={{ $json.is_fresh }}"
+          },
+          "schema": [
+            {
+              "id": "symbol",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "symbol",
+              "defaultMatch": false
+            },
+            {
+              "id": "name",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "name",
+              "defaultMatch": false
+            },
+            {
+              "id": "market_date",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "market_date",
+              "defaultMatch": false
+            },
+            {
+              "id": "checked_at",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "checked_at",
+              "defaultMatch": false
+            },
+            {
+              "id": "price",
+              "type": "number",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "price",
+              "defaultMatch": false
+            },
+            {
+              "id": "currency",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "currency",
+              "defaultMatch": false
+            },
+            {
+              "id": "change_pct",
+              "type": "number",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "change_pct",
+              "defaultMatch": false
+            },
+            {
+              "id": "data_status",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "data_status",
+              "defaultMatch": false
+            },
+            {
+              "id": "is_fresh",
+              "type": "boolean",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "is_fresh",
+              "defaultMatch": false
+            }
+          ],
+          "matchingColumns": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "70111d4d-9473-4928-bccd-2fd9523a0ead",
+      "name": "Enregistrer ou actualiser le cours",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1776,
+        752
+      ],
+      "notesInFlow": true,
+      "notes": "Ajoute ou met à jour les cours valides dans la table historique."
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "45 18 * * 5"
+            }
+          ]
+        }
+      },
+      "id": "c96c2122-2cf6-41f6-91df-434f233473d0",
+      "name": "Vendredi après clôture (Europe/Paris)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -32,
+        992
+      ],
+      "notesInFlow": true,
+      "notes": "Déclenche le récapitulatif hebdomadaire le vendredi après la clôture."
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "Historique_Bourse_v1",
+        "columns": {
+          "column": [
+            {
+              "name": "symbol"
+            },
+            {
+              "name": "name"
+            },
+            {
+              "name": "market_date"
+            },
+            {
+              "name": "checked_at"
+            },
+            {
+              "name": "price",
+              "type": "number"
+            },
+            {
+              "name": "currency"
+            },
+            {
+              "name": "change_pct",
+              "type": "number"
+            },
+            {
+              "name": "data_status"
+            },
+            {
+              "name": "is_fresh",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {
+          "createIfNotExists": true
+        }
+      },
+      "id": "b6f9ef3b-a3e3-4c2e-961e-6ef587a28c9c",
+      "name": "Créer ou réutiliser la table d’historique (hebdo)",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        992
+      ],
+      "notesInFlow": true,
+      "notes": "Vérifie que la table utilisée pour l’historique hebdomadaire existe."
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Historique_Bourse_v1"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "=market_date",
+              "condition": "=gte",
+              "keyValue": "={{ $now.setZone('Europe/Paris').startOf('week').toFormat('yyyy-MM-dd') }}"
+            },
+            {
+              "keyName": "=market_date",
+              "condition": "=lte",
+              "keyValue": "={{ $now.setZone('Europe/Paris').toFormat('yyyy-MM-dd') }}"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "id": "3fd3e827-fbf1-47e2-8ad3-12bba7b1dfb1",
+      "name": "Lire les cours depuis lundi",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        432,
+        992
+      ],
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "notes": "Récupère les cours enregistrés depuis le début de la semaine."
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "rows",
+        "options": {}
+      },
+      "id": "a798cb65-57ca-4107-8ef3-c4382342f4f5",
+      "name": "Rassembler l’historique hebdomadaire",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        672,
+        992
+      ],
+      "notesInFlow": true,
+      "notes": "Réunit les observations de la semaine pour préparer le récapitulatif."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "28d8b583-5dba-46a2-bd0e-5cbea4bae198",
+              "name": "email_subject",
+              "value": "={{ `📈 Récapitulatif boursier hebdomadaire — ${((()=>{const rows=($json.rows||[]).filter(r=>r.symbol&&r.market_date&&Number.isFinite(Number(r.price))&&Number(r.price)>0),syms=['SU.PA','AI.PA','DSY.PA','IUSD.DE'],groups=Object.fromEntries(syms.map(s=>[s,rows.filter(r=>r.symbol===s).sort((a,b)=>String(a.market_date).localeCompare(String(b.market_date)))])),performances=syms.map(s=>{const a=groups[s];if(a.length<2)return null;return {symbol:s,name:a.at(-1).name,pct:(Number(a.at(-1).price)-Number(a[0].price))/Number(a[0].price)*100,first:a[0],last:a.at(-1),count:a.length} }).filter(Boolean),d=new Date().toLocaleString('fr-FR',{timeZone:'Europe/Paris',dateStyle:'short',timeStyle:'short'});return {rows,syms,groups,performances,d} })()).d}` }}",
+              "type": "string"
+            },
+            {
+              "id": "366d284c-72a1-442b-ab28-21fc6a1d4713",
+              "name": "base_body",
+              "value": "={{ (()=>{const x=(()=>{const rows=($json.rows||[]).filter(r=>r.symbol&&r.market_date&&Number.isFinite(Number(r.price))&&Number(r.price)>0),syms=['SU.PA','AI.PA','DSY.PA','IUSD.DE'],groups=Object.fromEntries(syms.map(s=>[s,rows.filter(r=>r.symbol===s).sort((a,b)=>String(a.market_date).localeCompare(String(b.market_date)))])),performances=syms.map(s=>{const a=groups[s];if(a.length<2)return null;return {symbol:s,name:a.at(-1).name,pct:(Number(a.at(-1).price)-Number(a[0].price))/Number(a[0].price)*100,first:a[0],last:a.at(-1),count:a.length} }).filter(Boolean),d=new Date().toLocaleString('fr-FR',{timeZone:'Europe/Paris',dateStyle:'short',timeStyle:'short'});return {rows,syms,groups,performances,d} })();const lines=x.syms.map(s=>{const a=x.groups[s];if(a.length<2)return `• ${s} : historique insuffisant cette semaine (${a.length} cours).`;const f=a[0],l=a.at(-1),pct=(Number(l.price)-Number(f.price))/Number(f.price)*100;return `• ${l.name} (${s}) : ${Number(f.price).toFixed(2)} ${f.currency} le ${f.market_date} → ${Number(l.price).toFixed(2)} ${l.currency} le ${l.market_date} | ${pct>=0?'+':''}${pct.toFixed(2)} % (${a.length} cours)`});const p=x.performances,best=[...p].sort((a,b)=>b.pct-a.pct)[0],worst=[...p].sort((a,b)=>a.pct-b.pct)[0];return [`Récapitulatif hebdomadaire — ${x.d} (heure de Paris)`,'Comparaison du premier au dernier cours disponible depuis lundi cette semaine.','',...lines,'',...(p.length?[`Meilleure performance : ${best.name} (${best.symbol}), ${best.pct>=0?'+':''}${best.pct.toFixed(2)} %.`,`Performance la plus faible : ${worst.name} (${worst.symbol}), ${worst.pct>=0?'+':''}${worst.pct.toFixed(2)} %.`]:['Performances maximale/minimale indisponibles : historique insuffisant.']),'','Source des cours : historique n8n alimenté par Yahoo Finance.'].join('\\n')})() }}",
+              "type": "string"
+            },
+            {
+              "id": "93abec69-f737-4eb2-9696-a5a7bd211d63",
+              "name": "prompt",
+              "value": "=<mission>\nAnalyse le suivi boursier fourni et rédige un résumé court en français.\nAide le lecteur à repérer les changements notables et les éléments à surveiller.\n</mission>\n\n<regles>\n- Utilise les cours et l’historique fournis pour les chiffres.\n- Distingue clairement les faits observés, les informations trouvées en ligne et tes interprétations.\n- Ne présente jamais une actualité comme la cause certaine d’une variation sans preuve.\n- Si une donnée est absente ou ancienne, signale-le et ne tire pas de conclusion sur le cours actuel.\n- N’invente aucun chiffre, événement, source ou URL.\n- Ne donne aucun conseil personnalisé ni recommandation d’achat ou de vente.\n- Si rien ne ressort clairement, dis-le simplement au lieu de remplir le résumé.\n</regles>\n\n<critere_de_changement_notable>\nCompare la variation à l’historique fourni quand il est disponible.\nNe crée pas de seuil arbitraire. Si les données ne suffisent pas à dire qu’un mouvement est inhabituel, présente-le comme une simple variation observée.\n</critere_de_changement_notable>\n\n<format>\nFais 3 à 5 puces maximum.\nPour chaque élément notable, indique le fait, pourquoi il mérite attention et ce qui reste incertain.\nTermine par une courte section « À surveiller ».\nAjoute les sources web réellement utilisées, si la recherche en fournit.\n</format>\n\n<exemples>\n<exemple>\n<donnees>\nUne action varie de +1,2 %. Son historique récent montre des variations quotidiennes généralement proches de 0,2 %.\n</donnees>\n<reponse_attendue>\nLa hausse de 1,2 % est plus marquée que les mouvements récents fournis. À surveiller : voir si cette évolution se confirme lors des prochaines séances. Aucune cause n’est établie par ces seules données.\n</reponse_attendue>\n</exemple>\n\n<exemple>\n<donnees>\nLe dernier cours disponible date d’hier et le statut indique « stale ».\n</donnees>\n<reponse_attendue>\nLe cours n’a pas été actualisé aujourd’hui. Je ne peux donc pas confirmer la variation du jour ; attendre une nouvelle donnée avant de conclure.\n</reponse_attendue>\n</exemple>\n\n<exemple>\n<donnees>\nLes cours sont disponibles, mais aucun mouvement ne se distingue de l’historique fourni et aucune actualité pertinente n’a été trouvée.\n</donnees>\n<reponse_attendue>\nRien de particulièrement notable aujourd’hui. À surveiller : la prochaine mise à jour des cours.\n</reponse_attendue>\n</exemple>\n</exemples>\n\n<donnees>\n[Insérer ici les données JSON calculées par le workflow]\n</donnees>",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d1ed1e52-6693-4de1-8229-ec17956e0ef0",
+      "name": "Préparer les données hebdomadaires (sans Code)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        992
+      ],
+      "notesInFlow": true,
+      "notes": "Construit le sujet, le texte du récapitulatif et les consignes envoyées à Gemini."
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-flash-lite-latest",
+          "mode": "id"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.prompt }}"
+            }
+          ]
+        },
+        "simplify": false,
+        "builtInTools": {
+          "googleSearch": true
+        },
+        "options": {
+          "maxOutputTokens": 1500
+        }
+      },
+      "id": "917b410e-1d32-4355-a4f4-42b9682c1143",
+      "name": "Analyse IA hebdomadaire — Gemini natif",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1104,
+        992
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "notesInFlow": true,
+      "onError": "continueRegularOutput",
+      "notes": "Demande à Gemini une synthèse des tendances de la semaine et des actualités disponibles."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4a5652b9-b771-4e93-8a38-d1cbcdd162d8",
+              "name": "email_subject",
+              "value": "={{ $('Préparer les données hebdomadaires (sans Code)').item.json.email_subject }}",
+              "type": "string"
+            },
+            {
+              "id": "2980039d-85e9-450a-a03b-578ee08dd392",
+              "name": "email_body",
+              "value": "={{ (()=>{const t=String($json.text||$json.output_text||($json.content?.parts||[]).filter(p=>typeof p.text==='string').map(p=>p.text).join('\\n')||($json.candidates||$json.response?.candidates||[]).flatMap(c=>c.content?.parts||[]).filter(p=>typeof p.text==='string').map(p=>p.text).join('\\n')||($json.steps||[]).filter(s=>s.type==='model_output').flatMap(s=>s.content||[]).filter(c=>c.type==='text').map(c=>c.text||'').join('\\n')||'').trim(),u=[...new Set([...(Array.isArray($json.candidates)?$json.candidates:($json.response?.candidates||[])).flatMap(c=>c.groundingMetadata?.groundingChunks||[]).map(c=>c.web?.uri||c.web?.url||'').filter(u=>/^https?:\\/\\//i.test(u)),...($json.steps||[]).filter(s=>s.type==='model_output').flatMap(s=>s.content||[]).filter(c=>c.type==='text').flatMap(c=>c.annotations||[]).filter(a=>a.type==='url_citation'&&/^https?:\\/\\//i.test(a.url||'')).map(a=>a.url)] )];return `${$('Préparer les données hebdomadaires (sans Code)').item.json.base_body}\\n\\nAnalyse IA (à titre informatif)\\n${t||'Analyse IA indisponible (Gemini ou recherche web sans réponse). Les chiffres ci-dessus restent disponibles.'}${u.length?'\\n\\nSources web citées par Gemini\\n'+u.join('\\n'):'\\n\\nAucune source web exploitable n’a été renvoyée.'}\\n\\nCette analyse peut contenir des erreurs; elle ne constitue pas un conseil financier.`})() }}",
+              "type": "string"
+            },
+            {
+              "id": "b10862a3-83ef-4ebb-b09c-51c225fcd5dc",
+              "name": "analysis_available",
+              "value": "={{ !!(String($json.text||$json.output_text||($json.content?.parts||[]).filter(p=>typeof p.text==='string').map(p=>p.text).join('\\n')||($json.candidates||$json.response?.candidates||[]).flatMap(c=>c.content?.parts||[]).filter(p=>typeof p.text==='string').map(p=>p.text).join('\\n')||($json.steps||[]).filter(s=>s.type==='model_output').flatMap(s=>s.content||[]).filter(c=>c.type==='text').map(c=>c.text||'').join('\\n')||'').trim()) }}",
+              "type": "boolean"
+            },
+            {
+              "id": "a24bc0d5-3dab-4b52-8f04-13fc61bb089d",
+              "name": "citation_count",
+              "value": "={{ [...new Set([...(Array.isArray($json.candidates)?$json.candidates:($json.response?.candidates||[])).flatMap(c=>c.groundingMetadata?.groundingChunks||[]).map(c=>c.web?.uri||c.web?.url||'').filter(u=>/^https?:\\/\\//i.test(u)),...($json.steps||[]).filter(s=>s.type==='model_output').flatMap(s=>s.content||[]).filter(c=>c.type==='text').flatMap(c=>c.annotations||[]).filter(a=>a.type==='url_citation'&&/^https?:\\/\\//i.test(a.url||'')).map(a=>a.url)] )].length }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ac1b10fc-e798-411e-9dd7-01b157df7bf9",
+      "name": "Assembler le mail hebdomadaire (sans Code)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1472,
+        992
+      ],
+      "notesInFlow": true,
+      "notes": "Réunit l’historique, l’analyse IA et les éventuelles sources pour composer le courriel."
+    },
+    {
+      "parameters": {
+        "sendTo": "EMAIL_A_REMPLACER",
+        "subject": "={{ $json.email_subject }}",
+        "message": "={{ $json.email_body }}",
+        "options": {}
+      },
+      "id": "f82d22fe-4011-459a-9104-da8120b141c5",
+      "name": "Envoyer le récapitulatif hebdomadaire avec analyse IA",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1760,
+        992
+      ],
+      "webhookId": "c08f09ed-d598-42b8-a5f8-c47e0f83f5cf",
+      "notesInFlow": true,
+      "notes": "Envoie par Gmail le récapitulatif de la semaine."
+    },
+    {
+      "parameters": {
+        "content": "## Suivi boursier\nChaque jour après la clôture, le workflow récupère les cours des actions suivies sur Yahoo Finance, les vérifie et les conserve dans l’historique. Il prépare un bilan avec Gemini et l’envoie par Gmail.\n\nLe vendredi, il relit l’historique de la semaine, demande à Gemini une synthèse, puis envoie le récapitulatif par Gmail."
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        192,
+        544
+      ],
+      "typeVersion": 1,
+      "id": "fe601985-9a5f-4675-b0f7-8b38d7fe7531",
+      "name": "Sticky Note1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Après clôture (Europe/Paris)": {
+      "main": [
+        [
+          {
+            "node": "Créer ou réutiliser l’historique",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Créer ou réutiliser l’historique": {
+      "main": [
+        [
+          {
+            "node": "Liste des symboles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Liste des symboles": {
+      "main": [
+        [
+          {
+            "node": "Une action par item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Une action par item": {
+      "main": [
+        [
+          {
+            "node": "Récupérer le cours",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Récupérer le cours": {
+      "main": [
+        [
+          {
+            "node": "Mettre en forme le cours (sans Code)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mettre en forme le cours (sans Code)": {
+      "main": [
+        [
+          {
+            "node": "Regrouper les résultats",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Cours valides pour historique",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Regrouper les résultats": {
+      "main": [
+        [
+          {
+            "node": "Préparer les données quotidiennes (sans Code)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparer les données quotidiennes (sans Code)": {
+      "main": [
+        [
+          {
+            "node": "Analyse IA quotidienne — Gemini natif",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assembler le mail quotidien (sans Code)": {
+      "main": [
+        [
+          {
+            "node": "Envoyer le bilan quotidien avec analyse IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cours valides pour historique": {
+      "main": [
+        [
+          {
+            "node": "Enregistrer ou actualiser le cours",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vendredi après clôture (Europe/Paris)": {
+      "main": [
+        [
+          {
+            "node": "Créer ou réutiliser la table d’historique (hebdo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Créer ou réutiliser la table d’historique (hebdo)": {
+      "main": [
+        [
+          {
+            "node": "Lire les cours depuis lundi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lire les cours depuis lundi": {
+      "main": [
+        [
+          {
+            "node": "Rassembler l’historique hebdomadaire",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rassembler l’historique hebdomadaire": {
+      "main": [
+        [
+          {
+            "node": "Préparer les données hebdomadaires (sans Code)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparer les données hebdomadaires (sans Code)": {
+      "main": [
+        [
+          {
+            "node": "Analyse IA hebdomadaire — Gemini natif",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assembler le mail hebdomadaire (sans Code)": {
+      "main": [
+        [
+          {
+            "node": "Envoyer le récapitulatif hebdomadaire avec analyse IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyse IA quotidienne — Gemini natif": {
+      "main": [
+        [
+          {
+            "node": "Assembler le mail quotidien (sans Code)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyse IA hebdomadaire — Gemini natif": {
+      "main": [
+        [
+          {
+            "node": "Assembler le mail hebdomadaire (sans Code)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "2065a469-25ac-47ce-ad24-374f1ad61622",
+  "meta": {
+    "instanceId": "fb65b991dfee38b3098ea83cc65c05eaaab92cc64a8fffc873c58e873f798179"
+  },
+  "nodeGroups": [],
+  "id": "UTPcIuFecpSptt7q",
+  "tags": []
+}
