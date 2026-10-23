@@ -16,22 +16,12 @@ Le bilan hebdomadaire dépend de l’historique enregistré par les exécutions 
 ## Fichiers
 
 - `workflows/suivi-boursier.workflow.ts` : définition TypeScript du workflow.
-- `media/workflow-preview.png` : aperçu du workflow.
+- `media/Workflow.png` : aperçu du workflow.
 - `skills/interview/SKILL.md` : clarifier un besoin avant d’améliorer un projet.
 - `skills/doubt-driven-dev/SKILL.md` : vérifier les hypothèses et les résultats.
 
-## Configuration et déploiement
 
-Configure d’abord ton environnement n8n avec `n8ncli env edit <nom>`. Vérifie dans n8n que les identifiants Gemini et Gmail utilisés par le workflow sont disponibles, puis valide et envoie le fichier :
 
-```sh
-n8ncli validate workflows/suivi-boursier.workflow.ts
-n8ncli push workflows/suivi-boursier.workflow.ts
-```
 
-Avant d’activer le workflow, vérifie le destinataire configuré dans les deux nœuds Gmail et lance une exécution manuelle pour confirmer que les données sont enregistrées et que les courriels arrivent correctement.
 
-## Confidentialité
-
-Le workflow contient l’adresse destinataire Gmail en clair. Le dépôt étant public, cette adresse est visible. Remplace-la dans les deux nœuds Gmail si tu ne souhaites pas la rendre publique. Les secrets d’authentification restent dans les identifiants n8n.
 
