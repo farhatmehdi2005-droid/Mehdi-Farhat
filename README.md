@@ -1,28 +1,35 @@
-# Suivi boursier n8n
+Suivi boursier n8n
 
-Workflow n8n de suivi quotidien et hebdomadaire des cours, accompagné de trois skills Codex.
+Workflow n8n de suivi quotidien et hebdomadaire des cours, accompagné de deux skills Codex.
 
-## Aperçu du workflow
+## Aperçu
 
-Le workflow suit les cours chaque jour après la clôture, conserve les observations dans un historique et envoie un bilan quotidien généré avec Gemini. Un second parcours prépare et envoie un récapitulatif hebdomadaire.
+Le workflow récupère les cours de Schneider Electric, Air Liquide, Dassault Systèmes et de l’ETF IUSD sur Yahoo Finance. Il conserve les observations valides dans une table n8n, prépare un bilan quotidien et un récapitulatif hebdomadaire, puis demande une synthèse à Gemini et envoie les messages par Gmail.
 
 ![Aperçu du workflow de suivi boursier dans n8n](media/workflow-preview.png)
 
-## Contenu
+Le parcours quotidien est planifié du lundi au vendredi à 18 h 15 (heure de Paris). Le récapitulatif hebdomadaire est planifié le vendredi à 18 h 45.
 
-- `workflows/suivi-boursier.json` : export du workflow, avec une note explicative intégrée.
-- `skills/interview/SKILL.md` : clarifier rapidement un besoin et proposer des améliorations utiles.
-- `skills/doubt-driven-dev/SKILL.md` : vérifier les hypothèses, outils et résultats pendant le travail.
-- `skills/hostile-review/SKILL.md` : chercher activement les défauts d’un résultat livré.
-- `media/workflow-preview.png` : capture d’écran du workflow dans n8n.
-- `media/` : emplacement prévu pour la vidéo de présentation.
+## Fichiers
 
-## Importer le workflow
+- `workflows/suivi-boursier.workflow.ts` : définition du workflow avec le SDK TypeScript n8n.
+- `skills/interview/SKILL.md` : clarifier un besoin avant d’améliorer un projet.
+- `skills/doubt-driven-dev/SKILL.md` : vérifier les hypothèses et les résultats pendant le travail.
+- `media/workflow-preview.png` : aperçu du workflow.
 
-Dans n8n, utiliser l’import de workflow et sélectionner `workflows/suivi-boursier.json`. L’export est volontairement inactif. Après import, reconnecter les credentials Gemini et Gmail, remplacer `EMAIL_A_REMPLACER` par l’adresse voulue dans les deux nœuds Gmail, puis tester le workflow avant de l’activer.
+## Déployer avec n8ncli
 
-## Données retirées de l’export
+Configure d’abord l’environnement n8n dans le dépôt, puis valide et envoie le workflow :
 
-Pour partager ce dépôt publiquement, les adresses e-mail personnelles et les références aux credentials de l’instance ont été retirées. Les secrets ne sont pas inclus dans un export n8n. Le workflow importé demandera donc de reconfigurer les credentials et le destinataire Gmail.
+```sh
+n8ncli validate workflows/suivi-boursier.workflow.ts
+n8ncli push workflows/suivi-boursier.workflow.ts
+```
 
-Aucun fichier vidéo n’a encore été ajouté.
+Après l’envoi, vérifie les accès Yahoo Finance, Gemini et Gmail dans n8n avant d’activer le workflow. Vérifie aussi le destinataire Gmail configuré dans les deux nœuds d’envoi.
+
+## Données et confidentialité
+
+Le fichier TypeScript contient le destinataire Gmail configuré et des références aux credentials n8n. Il ne contient pas les secrets d’authentification eux-mêmes. Vérifie ces valeurs avant de publier ou de partager le dépôt.
+
+Une vidéo de présentation n’est pas incluse.
