@@ -11,16 +11,16 @@ Projet de **Mehdi Farhat** : surveiller Vinted toutes les **2 minutes** et envoy
 1. Collecter les annonces des recherches de saison sur Vinted.
 2. Initialiser la mémoire sans envoyer les annonces déjà présentes, puis écarter les articles connus.
 3. Filtrer prix (2–50 €), taille adulte (S/M/L/XL) et état ; classer et conserver **5 articles maximum** par passage.
-4. Utiliser **Gemini natif `gemini-flash-lite-latest`**, avec **Google Search désactivé** : photo si disponible, fourchette indicative de revente et indices visuels d’authenticité. Le prompt HTML et ses trois exemples sont intégrés au fichier TypeScript.
+4. Utiliser **Gemini natif `gemini-flash-lite-latest`**, avec **Google Search désactivé** : fourchette indicative de revente uniquement. Le prompt est du **texte HTML écrit directement dans le champ message du nœud Gemini**, avec trois exemples de prix ; aucun appel à une fonction de prompt.
 5. Envoyer dans le salon de marque puis `#toutes-les-annonces`, avec le lien Acheter sur Vinted. Mémoriser après les deux envois réussis.
 
-**Aucun nœud Code** : 38 nœuds de traitement et 5 sticky notes. Discord et Gemini sont natifs ; un HTTP Request reste nécessaire pour lire le catalogue public Vinted.
+**Aucun nœud Code** : 36 nœuds de traitement et 5 sticky notes. Discord et Gemini sont natifs ; un HTTP Request reste nécessaire pour lire le catalogue public Vinted.
 
 ## Un seul fichier de workflow
 
 [`radar_vinted.workflow.ts`](radar_vinted.workflow.ts) contient toute la définition : recherches, filtres, prompt HTML, mémoire, connexions et notes. Les paramètres communs et profils de saison sont factorisés. Le TypeScript construit le workflow ; il ne s’exécute pas comme un nœud Code dans n8n.
 
-Le fichier passe de **1 026 à 358 lignes** environ. Réduire les nœuds et réduire le fichier source sont deux choses différentes : les paramètres, les recherches et les instructions Gemini doivent toujours être conservés.
+Le fichier passe de **1 026 à 322 lignes** environ. Réduire les nœuds et réduire le fichier source sont deux choses différentes : les paramètres, les recherches et les instructions Gemini doivent toujours être conservés.
 
 ## Importer dans n8n
 
@@ -40,8 +40,10 @@ Importer le JSON généré dans n8n, puis :
 
 ## Vérifications et limites
 
-Les deux branches Gemini ont été testées dans n8n sur cinq aperçus sans envoi Discord. Sur un sweat Nike photographié affiché à 40 €, Gemini a proposé 25–40 € avant frais, avec une authenticité indéterminée. La version factorisée conserve les mêmes nœuds, paramètres et connexions ; les configurations de saison ont été comparées sur les 12 mois.
+Un aperçu n8n a préparé **5 messages avec succès, sans envoi Discord ni écriture mémoire**. Le premier article, affiché à 40 €, a reçu une fourchette indicative de 15–30 € avant frais ; les réponses peuvent varier.
 
-Les comparables sont des **prix demandés**, pas des ventes conclues. Le workflow ne consulte pas automatiquement chaque page détaillée et ne certifie pas l’authenticité. Sans informations suffisantes, Gemini peut ne pas donner de prix. En cas d’erreur Gemini, l’alerte indique que l’analyse est indisponible.
+La définition factorisée a été compilée et comparée à l’export n8n : mêmes nœuds, paramètres et connexions ; configurations de saison vérifiées sur les 12 mois. La version comporte un seul Gemini natif pour les prix, sans analyse photo.
+
+Les comparables sont des **prix demandés**, pas des ventes conclues. Le workflow ne consulte pas automatiquement chaque page détaillée. Sans informations suffisantes, Gemini peut ne pas donner de prix. En cas d’erreur Gemini, l’alerte indique que l’estimation est indisponible.
 
 La collecte dépend de l’accès public et du HTML de Vinted. Si le second envoi Discord échoue après le premier, une relance peut répéter le premier message.
