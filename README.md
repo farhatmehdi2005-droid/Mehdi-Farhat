@@ -4,7 +4,7 @@ Projet de **Mehdi Farhat** : surveiller Vinted toutes les **2 minutes** et envoy
 
 ![Workflow Vinted — capture fournie avant ajout de Gemini](https://raw.githubusercontent.com/farhatmehdi2005-droid/Mehdi-Farhat/eee9f9f5a8ee88a4e10d464614c3a9736c5277e7/radar-vinted.png)
 
-*Capture fournie du radar compact, avant ajout du bloc Gemini. Elle est référencée depuis un commit existant afin de garder seulement deux fichiers dans le dépôt.*
+*Capture fournie du radar compact, avant ajout du bloc Gemini. Elle est référencée depuis un commit existant afin de garder le README, le fichier TypeScript et le dossier `skills` dans le dépôt.*
 
 ## Fonctionnement
 
@@ -18,17 +18,17 @@ Projet de **Mehdi Farhat** : surveiller Vinted toutes les **2 minutes** et envoy
 
 ## Un seul fichier de workflow
 
-[`workflow.ts`](workflow.ts) contient toute la définition : recherches, filtres, prompt HTML, mémoire, connexions et notes. Les paramètres communs et profils de saison sont factorisés. Le TypeScript construit le workflow ; il ne s’exécute pas comme un nœud Code dans n8n.
+[`radar_vinted.workflow.ts`](radar_vinted.workflow.ts) contient toute la définition : recherches, filtres, prompt HTML, mémoire, connexions et notes. Les paramètres communs et profils de saison sont factorisés. Le TypeScript construit le workflow ; il ne s’exécute pas comme un nœud Code dans n8n.
 
 Le fichier passe de **1 026 à 358 lignes** environ. Réduire les nœuds et réduire le fichier source sont deux choses différentes : les paramètres, les recherches et les instructions Gemini doivent toujours être conservés.
 
 ## Importer dans n8n
 
-Avec Node.js **22.18+**, dans le dossier contenant `workflow.ts` :
+Avec Node.js **22.18+**, dans le dossier contenant `radar_vinted.workflow.ts` :
 
 ```sh
 npm install --no-save @n8n/workflow-sdk@0.38.1
-node --input-type=module -e "import w from './workflow.ts'; console.log(JSON.stringify(w.toJSON(), null, 2))" > workflow.json
+node --input-type=module -e "import w from './radar_vinted.workflow.ts'; console.log(JSON.stringify(w.toJSON(), null, 2))" > workflow.json
 ```
 
 Importer le JSON généré dans n8n, puis :
