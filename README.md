@@ -2,9 +2,9 @@
 
 Projet de **Mehdi Farhat** : surveiller Vinted toutes les **2 minutes** et envoyer les nouvelles annonces sélectionnées sur le serveur Discord **Bot Vinted new**, avec une estimation Gemini.
 
-![Workflow Vinted — capture fournie avant ajout de Gemini](https://raw.githubusercontent.com/farhatmehdi2005-droid/Mehdi-Farhat/eee9f9f5a8ee88a4e10d464614c3a9736c5277e7/radar-vinted.png)
+![Workflow Radar Vinted avec fourchette de prix Gemini](https://raw.githubusercontent.com/farhatmehdi2005-droid/Mehdi-Farhat/6d205c0c3c8a3ccdd81f9fd5135c0845c974e24e/capture-radar.png)
 
-*Capture fournie du radar compact, avant ajout du bloc Gemini. Elle est référencée depuis un commit existant afin de garder le README, le fichier TypeScript et le dossier `skills` dans le dépôt.*
+*Capture du workflow actuel fournie le 27 octobre 2026, avec le bloc d’estimation de prix Gemini.*
 
 ## Fonctionnement
 
